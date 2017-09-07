@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd"> 
+<mapper  namespace="com.haitai.mapper.UserMapper">
+	<resultMap type="com.haitai.domain.User" id="User">
+		<id property="id" column="user_id" jdbcType="VARCHAR"/>
+		<result property="userName" column="user_name" jdbcType="VARCHAR"/>
+		<result property="name" column="real_name" jdbcType="VARCHAR"/>
+		<result property="sex" column="sex" jdbcType="NUMERIC"/>
+		<result property="email" column="email" jdbcType="VARCHAR"/>
+		<result property="phone" column="phone" jdbcType="VARCHAR"/>
+		<result property="deptID" column="deptID" jdbcType="VARCHAR"/>
+		<result property="deptName" column="deptName" jdbcType="VARCHAR"/>
+		<result property="organizationID" column="organizationID" jdbcType="VARCHAR"/>
+		<result property="organizationName" column="organizationName" jdbcType="VARCHAR"/>
+		<result property="statis" column="statis_dept" jdbcType="VARCHAR"/>
+		<result property="statisName" column="statisName" jdbcType="VARCHAR"/>
+		<result property="password" column="password" jdbcType="VARCHAR"/>
+		<result property="status" column="status" jdbcType="NUMERIC"/>
+		<result property="lastLoginTime" column="last_logintime" jdbcType="VARCHAR"/>
+		<result property="roleValue" column="role_value" jdbcType="VARCHAR"/>
+		<association property="roles" column="user_id" select="com.haitai.mapper.RoleMapper.getRoleByUserId"/>
+		<association property="departments" column="user_id" select="com.haitai.mapper.DepartmentMapper.getDepartmentByUserId"/>
+	</resultMap>
+	
+	<sql id="sysUserColums">
+		user_id, user_name, real_name, sex, email, phone, deptID, organizationID, password, status, last_logintime
+	</sql>
+	
+	<select id="getUserByEmail" resultMap="User">
+		SELECT <include refid="sysUserColums"/> FROM T_SYS_USER WHERE email = #{email}
+	</select>
+	
+	<select id="getUserByUserName" resultMap="User">
+		SELECT <include refid="sysUserColums"/> FROM T_SYS_USER WHERE user_name = #{userName}
+	</select>
+	
+	<select id="getUserById" resultMap="User">
+		SELECT <include refid="sysUserColums"/> FROM T_SYS_USER WHERE user_id = #{id}
+	</select>
+	
+	<select id="getUserCount" resultType="int">
+		SELECT COUNT(1) FROM T_SYS_USER
+		WHERE 1=1
+		<if test="userName!=null and userName!=''"> AND user_name LIKE '%' || #{userName} || '%'    </if>
+		<if test="name!=null and name!=''"> AND real_name LIKE '%' || #{name} || '%'   </if>
+	</select>
+	
+	<select id="getUserListByPager" resultMap="User">
+	    SELECT
+			u.user_id,
+			u.user_name,
+			u.real_name,
+			u.sex,
+			u.email,
+			u.phone,
+			u.deptID,
+			u.organizationID,
+			(
+				SELECT
+					WMSYS.WM_CONCAT(t.cname)
+				FROM
+					T_SYS_DEPARTMENT t,
+					T_SYS_USER_DEPT t_user
+				WHERE
+					t_user.dept_id = t.dept_id
+				AND
+					t_user.user_id = u.user_id
+			) AS deptName,
+			(
+				SELECT
+					t.cname
+				FROM
+					T_SYS_DEPARTMENT t
+				WHERE
+					u.organizationID = t.dept_id
+			) AS organizationName,
+			u.last_logintime,
+			(
+				SELECT
+					WMSYS.WM_CONCAT(t.role_value)
+				FROM
+					T_SYS_ROLE t,
+					T_SYS_USER_ROLE t_user
+				WHERE
+					t.role_id=t_user.role_id
+				AND
+					t_user.user_id = u.user_id
+			) AS role_value
+		FROM
+			T_SYS_USER u
+		WHERE 1=1
+		<if test="userName!=null and userName!=''"> AND user_name LIKE '%' || #{userName} || '%'    </if>
+		<if test="name!=null and name!=''"> AND real_name LIKE '%' || #{name} || '%'   </if>
+		<if test="pager!=null"> LIMIT #{pager.startRow}, #{pager.pageSize} </if>
+	</select>
+	
+	<select id="getUserListByIds" resultMap="User">
+	    SELECT
+	    	u.user_id,
+			u.user_name,
+			u.real_name,
+			u.sex,
+			u.email,
+			u.phone,
+			u.deptID,
+			u.organizationID,
+			(
+				SELECT
+					WMSYS.WM_CONCAT(t.cname)
+				FROM
+					T_SYS_DEPARTMENT t,
+					T_SYS_USER_DEPT t_user
+				WHERE
+					t_user.dept_id = t.dept_id
+				AND
+					t_user.user_id = u.user_id
+			) AS deptName,
+			(
+				SELECT
+					t.cname
+				FROM
+					T_SYS_DEPARTMENT t
+				WHERE
+					u.organizationID = t.dept_id
+			) AS organizationName,
+			u.last_logintime,
+			(
+				SELECT
+					WMSYS.WM_CONCAT(t.role_value)
+				FROM
+					T_SYS_ROLE t,
+					T_SYS_USER_ROLE t_user
+				WHERE
+					t.role_id=t_user.role_id
+				AND
+					t_user.user_id = u.user_id
+			) AS role_value
+	    FROM
+	    	T_SYS_USER u
+	    WHERE
+	    	user_id
+	    IN
+		<foreach collection="list" item="ids" open="(" separator="," close=")">
+			#{ids}
+		</foreach>
+	</select>
+	
+	<delete id="deleteUser">
+	    DELETE FROM T_SYS_USER WHERE user_id IN
+		<foreach collection="list" item="ids" open="(" separator="," close=")">
+			#{ids}
+		</foreach>
+	</delete>
+	
+	<update id="updateUser">
+	    UPDATE T_SYS_USER SET real_name=#{name}, phone=#{phone}, deptID=#{deptID}, organizationID=#{organizationID}
+	    <if test="password!=null and password!=''">
+	        , password=#{password}
+	    </if>
+	    WHERE user_id=#{id}
+	</update>
+	
+	<insert id="addUser">
+	    INSERT INTO T_SYS_USER
+	    (user_id, user_name, real_name, phone, password, status, deptID, organizationID)
+	    VALUES(#{id}, #{userName}, #{name}, #{phone}, #{password}, 0, #{deptID}, #{organizationID})
+	</insert>
+	
+	<delete id="deleteUserDept">
+	    DELETE FROM T_SYS_USER_DEPT WHERE user_id IN
+	    <foreach collection="list" item="userIDs" open="(" separator="," close=")">
+			#{userIDs}
+		</foreach>
+	</delete>
+	
+	<insert id="addUserDept">
+	    INSERT INTO T_SYS_USER_DEPT
+	    (user_id, dept_id)
+	    VALUES
+	    <foreach collection="list" item="userDepts" separator=",">
+			(#{userDepts.userID}, #{userDepts.deptID})
+		</foreach>
+	</insert>
+	
+	<insert id="addUserRole">
+	    INSERT INTO T_SYS_USER_ROLE
+	    (user_id, role_id)
+	    VALUES
+	    <foreach collection="list" item="params" separator=",">
+			(#{params.userID}, #{params.roleID})
+		</foreach>
+	</insert>
+	
+	<delete id="deleteUserRole">
+	    DELETE FROM T_SYS_USER_ROLE WHERE user_id IN
+	    <foreach collection="list" item="userIDs" open="(" separator="," close=")">
+			#{userIDs}
+		</foreach>
+	</delete>
+	
+	<update id="updateLastLoginTime">
+	    UPDATE T_SYS_USER
+	    SET last_logintime=#{lastLoginTime}
+	    WHERE user_id=#{userID}
+	</update>
+	
+	<update id="updatePassword">
+	    UPDATE T_SYS_USER
+	    SET password=#{password}
+	    WHERE user_id=#{id}
+	</update>
+	
+</mapper>
